@@ -1,4 +1,4 @@
-package com.funsplashthebigparty
+package com.funsplash.the.big.party
 
 import android.app.Application
 import com.facebook.react.PackageList

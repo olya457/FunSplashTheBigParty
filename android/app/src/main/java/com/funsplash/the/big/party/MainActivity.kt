@@ -1,4 +1,4 @@
-package com.funsplashthebigparty
+package com.funsplash.the.big.party
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
