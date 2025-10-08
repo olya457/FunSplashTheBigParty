@@ -1,35 +1,71 @@
-# Resolve react_native_pods.rb with node to allow for hoisting
-require Pod::Executable.execute_command('node', ['-p',
-  'require.resolve(
-    "react-native/scripts/react_native_pods.rb",
-    {paths: [process.argv[1]]},
-  )', __dir__]).strip
 
-platform :ios, min_ios_version_supported
+source 'https://cdn.cocoapods.org/'
+
+
+def require_with_fallback(node_path, fallback_rel)
+  begin
+    require Pod::Executable.execute_command(
+      'node',
+      ['-p', "require.resolve(\"#{node_path}\", { paths: [process.argv[1]] })", __dir__]
+    ).strip
+  rescue
+    require File.expand_path(fallback_rel, __dir__)
+  end
+end
+
+require_with_fallback('react-native/scripts/react_native_pods.rb',
+                      '../node_modules/react-native/scripts/react_native_pods.rb')
+require_with_fallback('@react-native-community/cli-platform-ios/native_modules.rb',
+                      '../node_modules/@react-native-community/cli-platform-ios/native_modules.rb')
+
+platform :ios, '13.0'
+
 prepare_react_native_project!
 
 linkage = ENV['USE_FRAMEWORKS']
-if linkage != nil
-  Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
-  use_frameworks! :linkage => linkage.to_sym
-end
+use_frameworks! :linkage => linkage.to_sym if linkage
+
 
 target 'FunSplashTheBigParty' do
   config = use_native_modules!
 
   use_react_native!(
     :path => config[:reactNativePath],
-    # An absolute path to your application root.
-    :app_path => "#{Pod::Config.instance.installation_root}/.."
+    :app_path => "#{Pod::Config.instance.installation_root}/..",
+    :hermes_enabled => true,  
+    :fabric_enabled => true   
   )
 
+
   post_install do |installer|
-    # https://github.com/facebook/react-native/blob/main/packages/react-native/scripts/react_native_pods.rb#L197-L202
     react_native_post_install(
       installer,
       config[:reactNativePath],
-      :mac_catalyst_enabled => false,
-      # :ccache_enabled => true
+      :mac_catalyst_enabled => false
     )
+
+    installer.pods_project.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+
+      config.build_settings['EXCLUDED_ARCHS[sdk=iphoneos*]'] = 'i386 x86_64 armv7 armv7s'
+
+      config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'gnu++17'
+    end
+
+    is_intel = `uname -m`.strip == 'x86_64' 
+    installer.pods_project.targets.each do |t|
+      t.build_configurations.each do |config|
+    
+        flags = config.build_settings['OTHER_LDFLAGS'] || ['$(inherited)']
+        flags << '-ObjC' unless flags.include?('-ObjC')
+        config.build_settings['OTHER_LDFLAGS'] = flags
+
+        if is_intel
+          config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
+        end
+
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+      end
+    end
   end
 end
