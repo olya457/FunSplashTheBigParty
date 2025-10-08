@@ -1,4 +1,3 @@
-
 source 'https://cdn.cocoapods.org/'
 
 
@@ -18,13 +17,12 @@ require_with_fallback('react-native/scripts/react_native_pods.rb',
 require_with_fallback('@react-native-community/cli-platform-ios/native_modules.rb',
                       '../node_modules/@react-native-community/cli-platform-ios/native_modules.rb')
 
-platform :ios, '13.0'
+platform :ios, '15.6'
 
 prepare_react_native_project!
 
 linkage = ENV['USE_FRAMEWORKS']
 use_frameworks! :linkage => linkage.to_sym if linkage
-
 
 target 'FunSplashTheBigParty' do
   config = use_native_modules!
@@ -32,10 +30,9 @@ target 'FunSplashTheBigParty' do
   use_react_native!(
     :path => config[:reactNativePath],
     :app_path => "#{Pod::Config.instance.installation_root}/..",
-    :hermes_enabled => true,  
-    :fabric_enabled => true   
+    :hermes_enabled => true
+   
   )
-
 
   post_install do |installer|
     react_native_post_install(
@@ -44,27 +41,20 @@ target 'FunSplashTheBigParty' do
       :mac_catalyst_enabled => false
     )
 
-    installer.pods_project.build_configurations.each do |config|
-      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
-
-      config.build_settings['EXCLUDED_ARCHS[sdk=iphoneos*]'] = 'i386 x86_64 armv7 armv7s'
-
-      config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'gnu++17'
+    installer.pods_project.build_configurations.each do |c|
+      c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.6'
+      c.build_settings['EXCLUDED_ARCHS[sdk=iphoneos*]'] = 'i386 x86_64 armv7 armv7s'
+      c.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'gnu++17'
     end
 
-    is_intel = `uname -m`.strip == 'x86_64' 
+    is_intel = `uname -m`.strip == 'x86_64'
     installer.pods_project.targets.each do |t|
-      t.build_configurations.each do |config|
-    
-        flags = config.build_settings['OTHER_LDFLAGS'] || ['$(inherited)']
+      t.build_configurations.each do |c|
+        flags = c.build_settings['OTHER_LDFLAGS'] || ['$(inherited)']
         flags << '-ObjC' unless flags.include?('-ObjC')
-        config.build_settings['OTHER_LDFLAGS'] = flags
-
-        if is_intel
-          config.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64'
-        end
-
-        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '13.0'
+        c.build_settings['OTHER_LDFLAGS'] = flags
+        c.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.6'
+        c.build_settings['EXCLUDED_ARCHS[sdk=iphonesimulator*]'] = 'arm64' if is_intel
       end
     end
   end
